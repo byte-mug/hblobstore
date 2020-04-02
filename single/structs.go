@@ -21,10 +21,19 @@ SOFTWARE.
 */
 
 
-package block
+package single
 
-type Storage interface{
-	
+// Represents a Byte-Range.
+type ByteRange [2]int
+func (b ByteRange) Begin() int {
+	if b[0]<0 { return 0 }
+	return b[0]
+}
+func (b ByteRange) Length() (int,bool) {
+	return b[1],b[1]>0
+}
+func (b ByteRange) Length64() (int64,bool) {
+	return int64(b[1]),b[1]>0
 }
 
-///
+//

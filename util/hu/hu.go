@@ -21,10 +21,20 @@ SOFTWARE.
 */
 
 
-package block
+package hu
 
-type Storage interface{
+import (
+	"github.com/valyala/fasthttp"
 	
+	fhr "github.com/byte-mug/golibs/radixroute/fasthttpradix"
+)
+
+func methodNotAllowed(ctx *fasthttp.RequestCtx) {
+	ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+	ctx.Response.Header.SetContentLength(0)
 }
 
-///
+func RegisterBase(router *fhr.Router) {
+	go func(){ recover() }()
+	router.Handle("HEAD","/*path",methodNotAllowed)
+}

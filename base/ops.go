@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2020 byte-mug
+Copyright (c) 2020 Simon Schmidt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

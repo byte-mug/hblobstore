@@ -21,10 +21,34 @@ SOFTWARE.
 */
 
 
-package block
+package fhapi
 
-type Storage interface{
+import (
+	"unsafe"
+	"io"
 	
+	"github.com/valyala/fasthttp"
+	"github.com/byte-mug/hblobstore/single"
+)
+
+func fchCast(p unsafe.Pointer) *fasthttp.RequestCtx {
+	return (*fasthttp.RequestCtx)(p)
 }
+func asPtr(p *fasthttp.RequestCtx) unsafe.Pointer {
+	return (unsafe.Pointer)(p)
+}
+
+func fhcSetBody(p unsafe.Pointer,data []byte) {
+	fchCast(p).SetBody(data)
+}
+func fhcGetBodyBuffer(p unsafe.Pointer) io.Writer {
+	return fchCast(p)
+}
+
+var ops = single.RdOps{
+	SetBody: fhcSetBody,
+	GetBodyBuffer: fhcGetBodyBuffer,
+}
+
 
 ///

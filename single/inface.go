@@ -21,10 +21,32 @@ SOFTWARE.
 */
 
 
-package block
+package single
 
-type Storage interface{
+import (
+	"errors"
+	"unsafe"
+)
+var (
+	EOpNotSupp = errors.New("Operation not supported!")
+	EServerAccessDenied = errors.New("Access Denied to Server!")
+	EDiskFailure = errors.New("Disk Failure")
+	EExist = errors.New("Exists")
+	ENotFound = errors.New("Not Found")
 	
+	EBeingDeleted = errors.New("Busy Being Deleted")
+)
+
+func BoilDownError(err error) error {
+	return err
+}
+
+type ObjectSvc interface{
+	PutObj(objectId []byte,data []byte) (err error)
+	Append(objectId []byte,data []byte) (pos ByteRange,err error)
+	ReadObj(objectId []byte,pos ByteRange, ops *RdOps, dst unsafe.Pointer) (err error)
+	DeleteObj(objectId []byte) (err error)
+	Info(objectId []byte) (lng int64,err error)
 }
 
 ///
