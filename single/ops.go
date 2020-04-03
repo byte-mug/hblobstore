@@ -31,7 +31,6 @@ import (
 type RdOps struct{
 	SetBody func(p unsafe.Pointer,data []byte)
 	GetBodyBuffer func(p unsafe.Pointer) io.Writer
-	//GetRequestBody func(p unsafe.Pointer) []byte
 }
 
 ///

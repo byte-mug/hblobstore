@@ -1,5 +1,6 @@
-/*
-Copyright (c) 2020 Simon Schmidt
+The MIT License (MIT)
+
+Copyright (c) 2015-present Aliaksandr Valialkin, VertaMedia, Kirill Danshin, Erik Dubbelboer, FastHTTP Authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,30 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-*/
-
-
-package single
-
-// Represents a Byte-Range.
-type ByteRange [2]int64
-
-// int(b.Begin64())
-func (b ByteRange) Begin() int {
-	if b[0]<0 { return 0 }
-	return int(b[0])
-}
-// int(b.Length64())
-func (b ByteRange) Length() (int,bool) {
-	return int(b[1]),b[1]>0
-}
-
-func (b ByteRange) Begin64() int64 {
-	if b[0]<0 { return 0 }
-	return b[0]
-}
-func (b ByteRange) Length64() (int64,bool) {
-	return b[1],b[1]>0
-}
-
-//

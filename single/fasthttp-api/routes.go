@@ -28,6 +28,7 @@ import (
 	"github.com/byte-mug/hblobstore/single"
 	
 	fhr "github.com/byte-mug/golibs/radixroute/fasthttpradix"
+	"github.com/byte-mug/hblobstore/util/bconv"
 )
 
 func setError(err error,ctx *fasthttp.RequestCtx, isR bool) {
@@ -75,8 +76,8 @@ func(h *apiOL) headObject(ctx *fasthttp.RequestCtx) {
 
 func(h *apiOL) getObject(ctx *fasthttp.RequestCtx) {
 	var rang single.ByteRange
-	rang[0],_ = fasthttp.ParseUint(ctx.Request.Header.Peek("X-Offset"))
-	rang[1],_ = fasthttp.ParseUint(ctx.Request.Header.Peek("X-Length"))
+	rang[0],_ = bconv.ParseUint64(ctx.Request.Header.Peek("X-Offset"))
+	rang[1],_ = bconv.ParseUint64(ctx.Request.Header.Peek("X-Length"))
 	//
 	
 	err := h.ReadObj(ctx.UserValue("object").([]byte),rang,&ops,asPtr(ctx))
@@ -100,8 +101,8 @@ func(h *apiOL) postObject(ctx *fasthttp.RequestCtx) {
 	if err!=nil {
 		setError(err,ctx,false)
 	} else {
-		ctx.Response.Header.AddBytesV("X-Offset",fasthttp.AppendUint(make([]byte,0,10),int(rang[0])))
-		ctx.Response.Header.AddBytesV("X-Length",fasthttp.AppendUint(make([]byte,0,10),int(rang[1])))
+		ctx.Response.Header.AddBytesV("X-Offset",bconv.AppendUint64(make([]byte,0,10),rang[0]))
+		ctx.Response.Header.AddBytesV("X-Length",bconv.AppendUint64(make([]byte,0,10),rang[1]))
 		ctx.SetBodyString("")
 		ctx.SetStatusCode(fasthttp.StatusCreated)
 	}

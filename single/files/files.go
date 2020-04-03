@@ -57,8 +57,8 @@ func (s *singleFile) Append(buf []byte) (pos single.ByteRange,err error) {
 	var w int
 	s.am.Lock(); defer s.am.Unlock()
 	w,err = s.f.WriteAt(buf,s.l)
-	pos[0] = int(s.l)
-	pos[1] = w
+	pos[0] = s.l
+	pos[1] = int64(w)
 	if err==nil { s.l += int64(w) }
 	return
 }
@@ -172,7 +172,7 @@ func (fs *multiFiles) ReadObj(objectId []byte,pos single.ByteRange, ops *single.
 	if sf,err = fs.borrowFile(fs.path(objectId),0); err!=nil { return }
 	defer sf.Done()
 	
-	off := int64(pos.Begin())
+	off := pos.Begin64()
 	
 	lng,ok := pos.Length64()
 	if !ok { lng = sf.l }
