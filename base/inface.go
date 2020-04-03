@@ -21,6 +21,9 @@ SOFTWARE.
 */
 
 
+/*
+[DEPRECATED] Implements basic interfaces for object storage.
+*/
 package base
 
 type ObjectLayer interface{
