@@ -1,5 +1,3 @@
-// +build plan9
-
 /*
 Copyright (c) 2020 Simon Schmidt
 
@@ -23,25 +21,50 @@ SOFTWARE.
 */
 
 
-package fs
+package conc
 
 import (
-	"os"
-	"syscall"
+	"sync"
+	"sync/atomic"
 )
 
-func getErrno(e error) error {
-	for {
-		switch v := e.(type) {
-		case *os.PathError: e = v.Err
-		case *os.LinkError: e = v.Err
-		case syscall.ErrorString: return v
-		case *syscall.ErrorString: if v==nil { return nil }; return *v
-		default: return nil
-		}
-	}
+// This structure works like sync.RWMutex, except, that a writer can yield control
+// over a resource at any time.
+type FairLock struct{
+	rc int64
+	rl sync.RWMutex
+	wl sync.Mutex
 }
 
-func IsIO(e error) bool { return getErrno(e)==syscall.EIO }
-func IsNOTDIR(e error) bool { return getErrno(e)==syscall.ENOTDIR }
-func IsENAMETOOLONG(e error) bool { return getErrno(e)==syscall.ENAMETOOLONG }
+// Acquires a shared lock on f.
+func (f *FairLock) RLock() {
+	atomic.AddInt64(&f.rc,1)
+	f.rl.RLock()
+}
+// Releases a shared lock on f.
+func (f *FairLock) RUnlock() {
+	f.rl.RUnlock()
+	atomic.AddInt64(&f.rc,-1)
+}
+
+// Acquires an exclusive lock on f.
+func (f *FairLock) Lock() {
+	f.wl.Lock()
+	f.rl.Lock()
+}
+// Releases an exclusive lock on f.
+func (f *FairLock) Unlock() {
+	f.rl.Unlock()
+	f.wl.Unlock()
+}
+
+// Temporarily yields exclusive the lock. This allows pending readers to access
+// the resource, but excludes other writers.
+func (f *FairLock) Yield() {
+	if atomic.LoadInt64(&f.rc)<1 { return }
+	f.rl.Unlock()
+	f.rl.Lock()
+}
+
+
+//

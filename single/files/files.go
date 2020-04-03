@@ -33,6 +33,7 @@ import (
 	
 	"github.com/byte-mug/hblobstore/single"
 	. "github.com/byte-mug/hblobstore/util/fs"
+	"github.com/byte-mug/hblobstore/util/conc"
 )
 
 func translate(e error) error {
@@ -80,6 +81,11 @@ func makSF(f *os.File) (*singleFile,error) {
 	},nil
 }
 
+/*
+I use this typedef to reduce boxing and unboxing overhead, thus
+reducing GC pressure by reducing allocations.
+*/
+type istring interface{}
 
 type multiFiles struct {
 	dir string
@@ -89,11 +95,22 @@ type multiFiles struct {
 	fme  sync.Map // Needed for sweeps.
 	fmwg sync.WaitGroup
 	fml  sync.Mutex
+	
+	// String-Pool
+	sp conc.Strpool
 }
-func (fs *multiFiles) path(name []byte) string {
-	return filepath.Join(fs.dir,"obj-"+string(name)+".bin")
+func (fs *multiFiles) path(name []byte) (pth string,alloced bool) {
+	if s,ok := fs.sp.Load(name); ok { return s,false }
+	
+	return filepath.Join(fs.dir,"obj-"+string(name)+".bin"),true
 }
-func (fs *multiFiles) borrowFile(path string,create int) (*singleFile,error) {
+func (fs *multiFiles) hlBorrowFile(name []byte,create int) (sf *singleFile,err error) {
+	path,alloced := fs.path(name)
+	sf,err = fs.borrowFile(name,path,create)
+	if err==nil && !alloced { fs.sp.Store(name,path) }
+	return
+}
+func (fs *multiFiles) borrowFile(raw []byte,path istring,create int) (*singleFile,error) {
 	// Acquire a lightweight shared lock on FMWG.
 	fs.fmwg.Add(1); defer fs.fmwg.Done()
 	
@@ -104,7 +121,7 @@ func (fs *multiFiles) borrowFile(path string,create int) (*singleFile,error) {
 	inst,ok := fs.fm.Load(path)
 	if !ok {
 		if _,ok = fs.fme.Load(path); ok { return nil,single.EBeingDeleted }
-		f,err := os.OpenFile(path,os.O_RDWR|create,0666)
+		f,err := os.OpenFile(path.(string),os.O_RDWR|create,0666)
 		if err!=nil { return nil,translate(err) }
 		sf,err := makSF(f)
 		if err!=nil { f.Close(); return nil,translate(err) }
@@ -123,7 +140,7 @@ func (fs *multiFiles) borrowFile(path string,create int) (*singleFile,error) {
 	sf.Add(1)
 	return sf,nil
 }
-func (fs *multiFiles) clearFile(path string) (found bool) {
+func (fs *multiFiles) clearFile(path istring) (found bool) {
 	fs.fml.Lock()
 	
 	// Load and delete the instance (Pseudo-Atomic).
@@ -147,29 +164,29 @@ func (fs *multiFiles) clearFile(path string) (found bool) {
 	sf.f.Close()
 	return true
 }
-func (fs *multiFiles) deleteFile(path string) (found bool,err error) {
+func (fs *multiFiles) deleteFile(path istring) (found bool,err error) {
 	if _,done := fs.fme.LoadOrStore(path,single.EBeingDeleted); done { return }
 	defer fs.fme.Delete(path)
 	found = fs.clearFile(path)
-	err = translate(os.Remove(path))
+	err = translate(os.Remove(path.(string)))
 	return
 }
 func (fs *multiFiles) PutObj(objectId []byte,data []byte) (err error) {
 	var sf *singleFile
-	if sf,err = fs.borrowFile(fs.path(objectId),os.O_CREATE|os.O_EXCL); err!=nil { return }
+	if sf,err = fs.hlBorrowFile(objectId,os.O_CREATE|os.O_EXCL); err!=nil { return }
 	defer sf.Done()
 	return sf.CreateContent(data)
 }
 func (fs *multiFiles) Append(objectId []byte,data []byte) (pos single.ByteRange,err error) {
 	var sf *singleFile
-	if sf,err = fs.borrowFile(fs.path(objectId),os.O_CREATE); err!=nil { return }
+	if sf,err = fs.hlBorrowFile(objectId,os.O_CREATE); err!=nil { return }
 	defer sf.Done()
 	return sf.Append(data)
 }
 
 func (fs *multiFiles) ReadObj(objectId []byte,pos single.ByteRange, ops *single.RdOps, dst unsafe.Pointer) (err error) {
 	var sf *singleFile
-	if sf,err = fs.borrowFile(fs.path(objectId),0); err!=nil { return }
+	if sf,err = fs.hlBorrowFile(objectId,0); err!=nil { return }
 	defer sf.Done()
 	
 	off := pos.Begin64()
@@ -186,12 +203,14 @@ func (fs *multiFiles) ReadObj(objectId []byte,pos single.ByteRange, ops *single.
 }
 
 func (fs *multiFiles) DeleteObj(objectId []byte) (err error) {
-	_,err = fs.deleteFile(fs.path(objectId))
+	path,_ := fs.path(objectId)
+	_,err = fs.deleteFile(path)
+	fs.sp.Delete(objectId)
 	return
 }
 func (fs *multiFiles) Info(objectId []byte) (lng int64,err error) {
 	var sf *singleFile
-	if sf,err = fs.borrowFile(fs.path(objectId),0); err!=nil { return }
+	if sf,err = fs.hlBorrowFile(objectId,0); err!=nil { return }
 	defer sf.Done()
 	lng = sf.l
 	return

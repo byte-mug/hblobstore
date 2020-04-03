@@ -29,6 +29,7 @@ import (
 )
 var (
 	EOpNotSupp = errors.New("Operation not supported!")
+	EIsReadOnly = errors.New("Read-Only!")
 	EServerAccessDenied = errors.New("Access Denied to Server!")
 	EDiskFailure = errors.New("Disk Failure")
 	EExist = errors.New("Exists")

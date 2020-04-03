@@ -39,6 +39,9 @@ func setError(err error,ctx *fasthttp.RequestCtx, isR bool) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	case single.EOpNotSupp:
 		ctx.SetStatusCode(fasthttp.StatusNotImplemented)
+	case single.EIsReadOnly:
+		ctx.Response.Header.Add("X-Reason","read_only")
+		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
 	case single.EServerAccessDenied:
 		ctx.Response.Header.Add("X-Error","access_denied")
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)

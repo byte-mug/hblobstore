@@ -45,4 +45,3 @@ func getErrno(e error) syscall.Errno {
 func IsIO(e error) bool { return getErrno(e)==syscall.EIO }
 func IsNOTDIR(e error) bool { return getErrno(e)==syscall.ENOTDIR }
 func IsENAMETOOLONG(e error) bool { return getErrno(e)==syscall.ENAMETOOLONG }
-
